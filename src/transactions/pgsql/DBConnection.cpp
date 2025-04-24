@@ -12,6 +12,10 @@
  */
 
 #include <catalog/pg_type_d.h>
+#include <ctime>
+#include <string>
+#include <sstream>
+#include <spdlog/spdlog.h>
 
 #include "DBConnection.h"
 
@@ -49,9 +53,17 @@ CDBConnection::~CDBConnection()
 }
 
 void
+#if TEMPLATE
+CDBConnection::begin(const char *macroName)
+{
+	PGresult *res = PQexec(m_Conn, "BEGIN;");
+	spdlog::info("[timestamp={}][connId={}][sql=BEGIN][name={}]", static_cast<time_t>(time(0)), PQbackendPID(m_Conn), macroName);
+#else
 CDBConnection::begin()
 {
 	PGresult *res = PQexec(m_Conn, "BEGIN;");
+	spdlog::info("[timestamp={}][connId={}][sql=BEGIN]", static_cast<time_t>(time(0)), PQbackendPID(m_Conn));
+#endif
 	PQclear(res);
 }
 
@@ -65,6 +77,7 @@ void
 CDBConnection::commit()
 {
 	PGresult *res = PQexec(m_Conn, "COMMIT;");
+	spdlog::info("[timestamp={}][connId={}][sql=COMMIT]", static_cast<time_t>(time(0)), PQbackendPID(m_Conn));
 	PQclear(res);
 }
 
@@ -89,6 +102,41 @@ CDBConnection::exec(const char *sql)
 	return exec(sql, 0, NULL, NULL, NULL, NULL, 0);
 }
 
+string binary_to_int(const char* data, int length) {
+    ostringstream oss;
+	if (length == 1) {	// INT1
+		int8_t val;
+		memcpy(&val, data, sizeof(int8_t));
+		oss << static_cast<int16_t>(val);
+		return oss.str();
+	}
+    else if (length == 2) { // INT2
+        int16_t val;
+        memcpy(&val, data, sizeof(int16_t));
+        val = ntohs(val); // 转换为主机字节序
+        oss << val;
+    }
+    else if (length == 4) { // INT4
+        int32_t val;
+        memcpy(&val, data, sizeof(int32_t));
+        val = ntohl(val); // 转换为主机字节序
+        oss << val;
+    }
+    else if (length == 8) { // INT8
+        uint64_t val;
+        memcpy(&val, data, sizeof(uint64_t));
+        // 手动处理大端到主机字节序（假设主机是小端）
+        uint32_t high = ntohl(static_cast<uint32_t>(val >> 32));
+        uint32_t low = ntohl(static_cast<uint32_t>(val & 0xFFFFFFFF));
+        val = (static_cast<uint64_t>(low) << 32) | high;
+        oss << val;
+    }
+    else {
+        oss << "Unknown int length: " << length;
+    }
+    return oss.str();
+}
+
 PGresult *
 CDBConnection::exec(const char *sql, int nParams, const Oid *paramTypes,
 		const char *const *paramValues, const int *paramLengths,
@@ -100,15 +148,61 @@ CDBConnection::exec(const char *sql, int nParams, const Oid *paramTypes,
 	// failures.  These serialization failures can occur with REPEATABLE READS
 	// or SERIALIZABLE.
 
+	int connId = PQbackendPID(m_Conn);
+	ostringstream paramStream;
+	if (nParams > 0) {
+		paramStream << "[para=";
+		for (int i = 0; i < nParams; i++) {
+			if (paramValues[i] != nullptr) { // 判断 paramValue, 处理空字符串
+				if (replace_map.find(i) != replace_map.end()) {
+					paramStream << replace_map[i];
+				} else {
+					if (paramFormats[i] == 1) { // 判断 paramFormat, 处理变长字节变量
+						paramStream << binary_to_int(paramValues[i], paramLengths[i]);
+					} else {
+						paramStream << "'" << paramValues[i] << "'";
+					}
+				}
+				
+			} else {
+				paramStream << "NULL";
+			}
+			if (i < nParams - 1) paramStream << ",";
+		}
+		paramStream << "]";
+	}
+	replace_map.clear();
+
+	time_t now = time(0);
 	PGresult *res = PQexecParams(m_Conn, sql, nParams, paramTypes, paramValues,
 			paramLengths, paramFormats, resultFormat);
 	ExecStatusType status = PQresultStatus(res);
 
+	string sqlStr(sql);
+	replace(sqlStr.begin(), sqlStr.end(), '\n', ' ');
+
+	const int nRows = PQntuples(res);
+	const int nFields = PQnfields(res);
+
+	ostringstream resStream;
+
 	switch (status) {
 	case PGRES_COMMAND_OK:
+		spdlog::info("[timestamp={}][connId={}][sql={}]{}[res={}]", now, connId, sqlStr, paramStream.str(), PQcmdTuples(res));
+		return res;
 	case PGRES_TUPLES_OK:
+		for (int i = 0; i < nRows; i++) {
+			resStream << "[res=";
+			for (int j = 0; j < nFields; j++) {
+				resStream << PQgetvalue(res, i, j);
+				if (j < nFields - 1) resStream << ",";
+			}
+			resStream << "]";
+		}
+		spdlog::info("[timestamp={}][connId={}][sql={}]{}{}", now, connId, sqlStr, paramStream.str(), resStream.str());
 		return res;
 	default:
+		spdlog::info("[timestamp={}][connId={}][sql={}]{}", now, connId, sqlStr, paramStream.str());
 		break;
 	}
 
@@ -146,7 +240,11 @@ CDBConnection::execute(const TMarketFeedFrame1Input *pIn,
 	pOut->send_len = 0;
 
 	for (int i = 0; i < 20; i++) {
+#if TEMPLATE
+		begin("MF");
+#else
 		begin();
+#endif
 		setRepeatableRead();
 
 #define MFF1Q1                                                                \
@@ -525,6 +623,7 @@ void
 CDBConnection::rollback()
 {
 	PGresult *res = PQexec(m_Conn, "ROLLBACK;");
+	spdlog::info("[timestamp={}][connId={}][sql=ROLLBACK]", time(0), PQbackendPID(m_Conn));
 	PQclear(res);
 }
 
@@ -539,6 +638,7 @@ CDBConnection::setReadCommitted()
 {
 	PGresult *res = PQexec(
 			m_Conn, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
+	spdlog::info("[timestamp={}][connId={}][sql=SET TRANSACTION ISOLATION LEVEL READ COMMITTED]", time(0), PQbackendPID(m_Conn));
 	PQclear(res);
 }
 
@@ -547,6 +647,7 @@ CDBConnection::setReadUncommitted()
 {
 	PGresult *res = PQexec(
 			m_Conn, "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
+	spdlog::info("[timestamp={}][connId={}][sql=SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED]", time(0), PQbackendPID(m_Conn));
 	PQclear(res);
 }
 
@@ -555,6 +656,7 @@ CDBConnection::setRepeatableRead()
 {
 	PGresult *res = PQexec(
 			m_Conn, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
+	spdlog::info("[timestamp={}][connId={}][sql=SET TRANSACTION ISOLATION LEVEL REPEATABLE READ]", time(0), PQbackendPID(m_Conn));
 	PQclear(res);
 }
 
@@ -563,5 +665,6 @@ CDBConnection::setSerializable()
 {
 	PGresult *res
 			= PQexec(m_Conn, "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+	spdlog::info("[timestamp={}][connId={}][sql=SET TRANSACTION ISOLATION LEVEL SERIALIZABLE]", time(0), PQbackendPID(m_Conn));
 	PQclear(res);
 }

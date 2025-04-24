@@ -377,6 +377,12 @@ CDBConnectionServerSide::execute(
 		sizeof(uint64_t) };
 	const int paramFormats[6] = { 1, 1, 1, 0, 1, 1 };
 
+	stringstream ss;
+	ss << pIn->start_day.year << "-" 
+	   << pIn->start_day.month << "-" 
+	   << pIn->start_day.day;
+	replace_map[4] = ss.str();
+
 	PGresult *res
 			= exec("SELECT * FROM MarketWatchFrame1($1, $2, $3, $4, $5, $6)",
 					6, paramTypes, paramValues, paramLengths, paramFormats, 0);
@@ -407,6 +413,12 @@ CDBConnectionServerSide::execute(const TSecurityDetailFrame1Input *pIn,
 	const int paramLengths[4] = { sizeof(uint16_t), sizeof(uint32_t),
 		sizeof(uint32_t), sizeof(char) * (cSYMBOL_len + 1) };
 	const int paramFormats[4] = { 1, 1, 1, 0 };
+
+	stringstream ss;
+	ss << pIn->start_day.year << "-" 
+	   << pIn->start_day.month << "-" 
+	   << pIn->start_day.day;
+	replace_map[2] = ss.str();
 
 	PGresult *res = exec("SELECT * FROM SecurityDetailFrame1($1, $2, $3, $4)",
 			4, paramTypes, paramValues, paramLengths, paramFormats, 0);

@@ -28,8 +28,11 @@ CCustomerPositionDB::DoCustomerPositionFrame1(
 			 << m_pid << " -- cust_id: " << pIn->cust_id << endl
 			 << m_pid << " -- tax_id: " << pIn->tax_id << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("CP");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);

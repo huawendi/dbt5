@@ -32,8 +32,11 @@ CDataMaintenanceDB::DoDataMaintenanceFrame1(
 			 << m_pid << " -- tx_id name: " << pIn->tx_id << endl
 			 << m_pid << " -- vol_incr: " << pIn->vol_incr << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("DM");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn);

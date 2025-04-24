@@ -14,6 +14,8 @@
 
 #define DATELEN 11
 
+thread_local bool t_is_cash = false;
+
 CDBConnectionClientSide::CDBConnectionClientSide(const char *szHost,
 		const char *szDBName, const char *szDBPort, bool bVerbose)
 : CDBConnection(szHost, szDBName, szDBPort, bVerbose)
@@ -1251,6 +1253,12 @@ CDBConnectionClientSide::execute(const TSecurityDetailFrame1Input *pIn,
 		sizeof(uint32_t), sizeof(uint32_t) };
 	const int paramFormats3[3] = { 0, 1, 1 };
 
+	stringstream ss;
+	ss << pIn->start_day.year << "-" 
+	   << pIn->start_day.month << "-" 
+	   << pIn->start_day.day;
+	replace_map[1] = ss.str();
+
 	res = exec(SDF1Q4, 3, paramTypes3, paramValues3, paramLengths3,
 			paramFormats3, 0);
 
@@ -1667,6 +1675,27 @@ CDBConnectionClientSide::execute(
 	const int paramFormats1[4] = { 1, 1, 1, 1 };
 	const int paramLengths1[4] = { sizeof(uint64_t), sizeof(uint64_t),
 		sizeof(uint64_t), sizeof(uint32_t) };
+	
+	stringstream ss;
+	
+	ss << pIn->start_trade_dts.year << "-"
+	   << pIn->start_trade_dts.month << "-" 
+	   << pIn->start_trade_dts.day << " " 
+	   << pIn->start_trade_dts.hour << ":"
+	   << pIn->start_trade_dts.minute << ":"
+	   << pIn->start_trade_dts.second;
+	replace_map[1] = ss.str();
+
+	ss.str("");
+	ss.clear();
+
+	ss << pIn->end_trade_dts.year << "-"
+	   << pIn->end_trade_dts.month << "-" 
+	   << pIn->end_trade_dts.day << " " 
+	   << pIn->end_trade_dts.hour << ":"
+	   << pIn->end_trade_dts.minute << ":" 
+	   << pIn->end_trade_dts.second;
+	replace_map[2] = ss.str();
 
 	res = exec(TLF2Q1, 4, paramTypes1, paramValues1, paramLengths1,
 			paramFormats1, 0);
@@ -1909,6 +1938,27 @@ CDBConnectionClientSide::execute(
 	const int paramFormats1[4] = { 0, 1, 1, 1 };
 	const int paramLengths1[4] = { sizeof(char) * (cSYMBOL_len + 1),
 		sizeof(uint64_t), sizeof(uint64_t), sizeof(uint32_t) };
+	
+	stringstream ss;
+
+	ss << pIn->start_trade_dts.year << "-"
+	   << pIn->start_trade_dts.month << "-" 
+	   << pIn->start_trade_dts.day << " " 
+	   << pIn->start_trade_dts.hour << ":"
+	   << pIn->start_trade_dts.minute << ":"
+	   << pIn->start_trade_dts.second;
+	replace_map[1] = ss.str();
+
+	ss.str("");
+	ss.clear();
+
+	ss << pIn->end_trade_dts.year << "-"
+	   << pIn->end_trade_dts.month << "-" 
+	   << pIn->end_trade_dts.day << " " 
+	   << pIn->end_trade_dts.hour << ":"
+	   << pIn->end_trade_dts.minute << ":" 
+	   << pIn->end_trade_dts.second;
+	replace_map[2] = ss.str();
 
 	res = exec(TLF3Q1, 4, paramTypes1, paramValues1, paramLengths1,
 			paramFormats1, 0);
@@ -2144,6 +2194,15 @@ CDBConnectionClientSide::execute(
 	const char *paramValues1[2] = { (char *) &acct_id, (char *) &trade_dts };
 	const int paramFormats1[2] = { 1, 1 };
 	const int paramLengths1[2] = { sizeof(uint64_t), sizeof(uint64_t) };
+
+	stringstream ss;
+	ss << pIn->trade_dts.year << "-" 
+	   << pIn->trade_dts.month << "-" 
+	   << pIn->trade_dts.day << " " 
+	   << pIn->trade_dts.hour << ":"
+	   << pIn->trade_dts.minute << ":" 
+	   << pIn->trade_dts.second;
+	replace_map[1] = ss.str();
 
 	res = exec(TLF4Q1, 2, paramTypes1, paramValues1, paramLengths1,
 			paramFormats1, 0);
@@ -2988,6 +3047,17 @@ CDBConnectionClientSide::execute(
 		sizeof(char) * 14, sizeof(char) * 14, sizeof(unsigned char) };
 	const int paramFormats1[11] = { 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1 };
 
+	if (is_cash) {
+		replace_map[2] = "true";
+	} else {
+		replace_map[2] = "false";
+	}
+
+	if (is_lifo) {
+		replace_map[10] = "true";
+	} else {
+		replace_map[10] = "false";
+	}
 	res = exec(
 			TOF4Q1, 11, NULL, paramValues1, paramLengths1, paramFormats1, 0);
 
@@ -4031,6 +4101,15 @@ CDBConnectionClientSide::execute(const TTradeResultFrame5Input *pIn)
 		sizeof(char) * (cST_ID_len + 1), sizeof(char) * 14, sizeof(uint64_t) };
 	const int paramFormats1[5] = { 0, 1, 0, 0, 1 };
 
+	stringstream ss;
+	ss << pIn->trade_dts.year << "-" 
+	   << pIn->trade_dts.month << "-" 
+	   << pIn->trade_dts.day << " " 
+	   << pIn->trade_dts.hour << ":"
+	   << pIn->trade_dts.minute << ":" 
+	   << pIn->trade_dts.second;
+	replace_map[1] = ss.str();
+
 	res = exec(TRF5Q1, 5, NULL, paramValues1, paramLengths1, paramFormats1, 0);
 	PQclear(res);
 
@@ -4054,6 +4133,13 @@ CDBConnectionClientSide::execute(const TTradeResultFrame5Input *pIn)
 			 << pIn->trade_dts.minute << ":" << pIn->trade_dts.second << endl;
 		cout << "$3 = " << pIn->st_completed_id << endl;
 	}
+	
+	ss.str("");
+	ss.clear();
+	ss << pIn->trade_dts.year << "-" << pIn->trade_dts.month
+			 << "-" << pIn->trade_dts.day << " " << pIn->trade_dts.hour << ":"
+			 << pIn->trade_dts.minute << ":" << pIn->trade_dts.second << endl;
+	replace_map[1] = ss.str();
 
 	const char *paramValues2[3] = { (char *) &trade_id, (char *) &trade_dts,
 		pIn->st_completed_id };
@@ -4110,6 +4196,12 @@ CDBConnectionClientSide::execute(
 	const int paramLengths1[3]
 			= { sizeof(uint64_t), sizeof(uint32_t), sizeof(char) * 14 };
 	const int paramFormats1[3] = { 1, 1, 0 };
+
+	stringstream ss;
+	ss << pIn->due_date.year << "-" 
+	   << pIn->due_date.month << "-" 
+	   << pIn->due_date.day;
+	replace_map[1] = ss.str();
 
 	if (pIn->trade_is_cash) {
 #define TRF6Q1A                                                               \
@@ -4730,6 +4822,27 @@ CDBConnectionClientSide::execute(
 		sizeof(uint64_t), sizeof(uint32_t) };
 	const int paramFormats1[4] = { 1, 1, 1, 1 };
 
+	stringstream ss;
+
+	ss << pIn->start_trade_dts.year << "-"
+	   << pIn->start_trade_dts.month << "-" 
+	   << pIn->start_trade_dts.day << " " 
+	   << pIn->start_trade_dts.hour << ":"
+	   << pIn->start_trade_dts.minute << ":"
+	   << pIn->start_trade_dts.second;
+	replace_map[1] = ss.str();
+
+	ss.str("");
+	ss.clear();
+
+	ss << pIn->end_trade_dts.year << "-"
+	   << pIn->end_trade_dts.month << "-" 
+	   << pIn->end_trade_dts.day << " " 
+	   << pIn->end_trade_dts.hour << ":"
+	   << pIn->end_trade_dts.minute << ":" 
+	   << pIn->end_trade_dts.second;
+	replace_map[2] = ss.str();
+
 	res = exec(TUF2Q1, 4, paramTypes1, paramValues1, paramLengths1,
 			paramFormats1, 0);
 
@@ -5083,6 +5196,27 @@ CDBConnectionClientSide::execute(
 	const int paramFormats1[4] = { 0, 1, 1, 1 };
 	const int paramLengths1[4] = { sizeof(char) * (cSYMBOL_len + 1),
 		sizeof(uint64_t), sizeof(uint64_t), sizeof(uint32_t) };
+	
+	stringstream ss;
+
+	ss << pIn->start_trade_dts.year << "-"
+	   << pIn->start_trade_dts.month << "-" 
+	   << pIn->start_trade_dts.day << " " 
+	   << pIn->start_trade_dts.hour << ":"
+	   << pIn->start_trade_dts.minute << ":"
+	   << pIn->start_trade_dts.second;
+	replace_map[1] = ss.str();
+
+	ss.str("");
+	ss.clear();
+
+	ss << pIn->end_trade_dts.year << "-"
+	   << pIn->end_trade_dts.month << "-" 
+	   << pIn->end_trade_dts.day << " " 
+	   << pIn->end_trade_dts.hour << ":"
+	   << pIn->end_trade_dts.minute << ":" 
+	   << pIn->end_trade_dts.second;
+	replace_map[2] = ss.str();
 
 	res = exec(TUF3Q1, 4, paramTypes1, paramValues1, paramLengths1,
 			paramFormats1, 0);

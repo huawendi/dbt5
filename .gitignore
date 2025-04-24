@@ -28,3 +28,6 @@ doc/html
 doc/pdf
 
 egen/
+
+EGenLoaderFrom*.log
+egenloader.out

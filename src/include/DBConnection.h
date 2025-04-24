@@ -11,6 +11,9 @@
 #ifndef DB_CONNECTION_H
 #define DB_CONNECTION_H
 
+#define TEMPLATE false	// 记录事务名称的开关
+
+#include <map>
 #include <libpq-fe.h>
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -35,12 +38,17 @@ protected:
 	PGconn *m_Conn;
 	bool m_bVerbose;
 
+	std::map<int, string> replace_map;
+
 public:
 	CDBConnection(const char *szHost, const char *szDBName,
 			const char *szDBPort, bool bVerbose = false);
 	~CDBConnection();
-
+#if TEMPLATE
+	void begin(const char *);
+#else
 	void begin();
+#endif
 	void commit();
 	void connect();
 	char *escape(string);

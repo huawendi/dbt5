@@ -25,9 +25,12 @@ CTradeResultDB::DoTradeResultFrame1(
 			 << m_pid << " - Trade Result Frame 1 (input)" << endl
 			 << m_pid << " -- trade_id: " << pIn->trade_id << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TR");
+#else
 	// start transaction but not commit in this frame
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setSerializable();
 	execute(pIn, pOut);

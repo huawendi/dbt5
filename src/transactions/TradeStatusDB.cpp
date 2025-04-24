@@ -25,8 +25,11 @@ CTradeStatusDB::DoTradeStatusFrame1(
 			 << m_pid << " - Trade Status Frame 1 (input)" << endl
 			 << m_pid << " -- acct_id: " << pIn->acct_id << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TS");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);

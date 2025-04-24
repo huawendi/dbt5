@@ -27,8 +27,11 @@ CTradeCleanupDB::DoTradeCleanupFrame1(const TTradeCleanupFrame1Input *pIn)
 			 << endl
 			 << m_pid << " -- trade_id: " << pIn->start_trade_id << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TC");
+#else
 	startTransaction();
+#endif
 	execute(pIn);
 	commitTransaction();
 

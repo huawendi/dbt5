@@ -28,8 +28,11 @@ CBrokerVolumeDB::DoBrokerVolumeFrame1(
 				 << "]: " << pIn->broker_list[i] << endl;
 		cout << m_pid << " -- sector name: " << pIn->sector_name << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("BV");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);

@@ -35,8 +35,11 @@ CSecurityDetailDB::DoSecurityDetailFrame1(
 			 << pIn->start_day.second << endl
 			 << m_pid << " -- symbol: " << pIn->symbol << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("SD");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);

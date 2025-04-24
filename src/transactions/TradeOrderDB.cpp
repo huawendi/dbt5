@@ -25,8 +25,11 @@ CTradeOrderDB::DoTradeOrderFrame1(
 			 << m_pid << " - Trade Order Frame 1 (input)" << endl
 			 << m_pid << " -- acct_id: " << pIn->acct_id << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TO");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setRepeatableRead();
 	execute(pIn, pOut);

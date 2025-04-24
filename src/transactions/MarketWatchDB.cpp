@@ -31,8 +31,11 @@ CMarketWatchDB::DoMarketWatchFrame1(
 			 << m_pid << " -- starting_co_id: " << pIn->starting_co_id
 			 << " (used only when industry_name is used)" << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("MW");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);

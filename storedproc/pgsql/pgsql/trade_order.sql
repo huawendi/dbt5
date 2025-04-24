@@ -7,19 +7,20 @@
 
 -- Clause 3.3.7.3
 
-CREATE OR REPLACE FUNCTION TradeOrderFrame1 (
-    IN acct_id IDENT_T
-  , OUT acct_name VARCHAR(50)
-  , OUT broker_id IDENT_T
-  , OUT broker_name VARCHAR(100)
-  , OUT cust_f_name VARCHAR(30)
-  , OUT cust_id IDENT_T
-  , OUT cust_l_name VARCHAR(30)
-  , OUT cust_tier SMALLINT
-  , OUT num_found INTEGER
-  , OUT tax_id VARCHAR(20)
-  , OUT tax_status SMALLINT
-) RETURNS RECORD
+-- 获取客户信息: 使用传入的账户 ID 获取客户、客户账户和账户经纪人的信息
+CREATE OR REPLACE FUNCTION TradeOrderFrame1 ( -- MARK: TradeOrderFrame1
+    IN acct_id IDENT_T           -- 输入: 账户ID
+  , OUT acct_name VARCHAR(50)    -- 输出: 账户名称
+  , OUT broker_id IDENT_T        -- 输出: 经纪人ID
+  , OUT broker_name VARCHAR(100) -- 输出: 经纪人名称
+  , OUT cust_f_name VARCHAR(30)  -- 输出: 客户名
+  , OUT cust_id IDENT_T          -- 输出: 客户ID
+  , OUT cust_l_name VARCHAR(30)  -- 输出: 客户姓
+  , OUT cust_tier SMALLINT       -- 输出: 客户等级
+  , OUT num_found INTEGER        -- 输出: 找到的记录个数
+  , OUT tax_id VARCHAR(20)       -- 输出: 税号
+  , OUT tax_status SMALLINT      -- 输出: 税务状态
+) RETURNS RECORD                 -- 返回: RECORD 类型
 AS $$
 DECLARE
     -- variables
@@ -30,12 +31,14 @@ BEGIN
          , ca_b_id
          , ca_c_id
          , ca_tax_st
+    -- 将查询结果存储到相应的输出参数中
     INTO acct_name
        , broker_id
        , cust_id
        , tax_status
     FROM customer_account
     WHERE ca_id = acct_id;
+    -- 获取上一条查询影响的行数, 存储到 num_found 中
     GET DIAGNOSTICS num_found = ROW_COUNT;
     SELECT c_f_name
          , c_l_name
@@ -57,13 +60,15 @@ LANGUAGE 'plpgsql';
 
 -- Clause 3.3.7.4
 
-CREATE OR REPLACE FUNCTION TradeOrderFrame2 (
-    IN acct_id IDENT_T
-  , IN exec_f_name VARCHAR(30)
-  , IN exec_l_name VARCHAR(30)
-  , IN exec_tax_id VARCHAR(20)
-  , OUT ap_acl VARCHAR(4)
-) RETURNS VARCHAR(4)
+-- 验证执行者: 验证执行交易的人是否具有适当的授权.
+-- 如果执行者未获授权, 事务将回滚(CE 总是生成授权的执行者)
+CREATE OR REPLACE FUNCTION TradeOrderFrame2 ( -- MARK: TradeOrderFrame2
+    IN acct_id IDENT_T         -- 输入: 账户ID
+  , IN exec_f_name VARCHAR(30) -- 输入: 执行者名
+  , IN exec_l_name VARCHAR(30) -- 输入: 执行者姓
+  , IN exec_tax_id VARCHAR(20) -- 输入: 执行者税号
+  , OUT ap_acl VARCHAR(4)      -- 输出: 账户权限
+) RETURNS VARCHAR(4)           -- 返回: VARCHAR(4) 类型
 AS $$
 BEGIN
     SELECT account_permission.ap_acl
@@ -79,35 +84,40 @@ LANGUAGE 'plpgsql';
 
 -- Clause 3.3.7.5
 
-CREATE OR REPLACE FUNCTION TradeOrderFrame3 (
-    IN acct_id IDENT_T
-  , IN cust_id IDENT_T
-  , IN cust_tier SMALLINT
-  , IN is_lifo SMALLINT
-  , IN issue CHAR(6)
-  , IN st_pending_id CHAR(4)
-  , IN st_submitted_id CHAR(4)
-  , IN tax_status SMALLINT
-  , IN trade_qty S_QTY_T
-  , IN trade_type_id CHAR(3)
-  , IN type_is_margin SMALLINT
-  , INOUT co_name VARCHAR(60)
-  , INOUT requested_price S_PRICE_T
-  , INOUT symbol VARCHAR(15)
-  , OUT buy_value BALANCE_T
-  , OUT charge_amount VALUE_T
-  , OUT comm_rate S_PRICE_T
-  , OUT acct_assets VALUE_T
-  , OUT market_price S_PRICE_T
-  , OUT s_name VARCHAR(70)
-  , OUT sell_value BALANCE_T
-  , OUT status_id CHAR(4)
-  , OUT tax_amount VALUE_T
-  , OUT type_is_market SMALLINT
-  , OUT type_is_sell SMALLINT
-) RETURNS RECORD
+-- 估算交易影响: 
+--   对于限价单，使用请求的价格进行估算；
+--   对于市价单，使用当前市场价值。
+-- 估算过程包括评估交易对现有持仓的影响，计算可能实现的利润的资本收益税，以及计算行政费用和经纪人佣金.
+-- 如果是保证金交易，还会评估客户账户的总资产
+CREATE OR REPLACE FUNCTION TradeOrderFrame3 ( -- MARK: TradeOrderFrame3
+    IN acct_id IDENT_T              -- 输入: 账户ID
+  , IN cust_id IDENT_T              -- 输入: 客户ID
+  , IN cust_tier SMALLINT           -- 输入: 客户等级
+  , IN is_lifo SMALLINT             -- 输入: 是否后进先出
+  , IN issue CHAR(6)                -- 输入: 证券发行
+  , IN st_pending_id CHAR(4)        -- 输入: 待处理状态ID
+  , IN st_submitted_id CHAR(4)      -- 输入: 已提交状态ID
+  , IN tax_status SMALLINT          -- 输入: 税务状态
+  , IN trade_qty S_QTY_T            -- 输入: 交易数量
+  , IN trade_type_id CHAR(3)        -- 输入: 交易类型ID
+  , IN type_is_margin SMALLINT      -- 输入: 是否保证金交易
+  , INOUT co_name VARCHAR(60)       -- 输入/输出: 公司名称
+  , INOUT requested_price S_PRICE_T -- 输入/输出: 请求价格
+  , INOUT symbol VARCHAR(15)        -- 输入/输出: 证券符号
+  , OUT buy_value BALANCE_T         -- 输出: 买入价值
+  , OUT charge_amount VALUE_T       -- 输出: 收费金额
+  , OUT comm_rate S_PRICE_T         -- 输出: 佣金费率
+  , OUT acct_assets VALUE_T         -- 输出: 账户资产
+  , OUT market_price S_PRICE_T      -- 输出: 市场价格
+  , OUT s_name VARCHAR(70)          -- 输出: 证券名称
+  , OUT sell_value BALANCE_T        -- 输出: 卖出价值
+  , OUT status_id CHAR(4)           -- 输出: 状态ID
+  , OUT tax_amount VALUE_T          -- 输出: 税额
+  , OUT type_is_market SMALLINT     -- 输出: 是否市场交易
+  , OUT type_is_sell SMALLINT       -- 输出: 是否卖出交易
+) RETURNS RECORD                    -- 返回: RECORD 类型
 AS $$
-<< tof3 >>
+<< tof3 >>  -- 标记一个位置, 用于控制流程(类似于 goto 语句)
 DECLARE
     -- variables
     co_id IDENT_T;
@@ -130,11 +140,13 @@ BEGIN
     comm_rate := 0;
     hold_assets := NULL;
     -- Get information on the security
-    IF symbol = '' THEN
+    IF symbol = '' THEN -- 如果证券符号为空,
+        -- 则根据公司名称查询公司ID,
         SELECT company.co_id
         INTO co_id
         FROM company
         WHERE company.co_name = TradeOrderFrame3.co_name;
+        -- 并根据公司ID和发行信息查询交易所ID、证券名称和证券符号
         SELECT s_ex_id
              , security.s_name
              , s_symb
@@ -144,7 +156,8 @@ BEGIN
         FROM security
         WHERE s_co_id = co_id
           AND s_issue = issue;
-    ELSE
+    ELSE -- 如果证券符号不为空,
+        -- 则根据证券符号查询公司ID, 交易所ID和证券名称,
         SELECT s_co_id
              , s_ex_id
              , security.s_name
@@ -153,6 +166,7 @@ BEGIN
            , TradeOrderFrame3.s_name
         FROM security
         WHERE s_symb = symbol;
+        -- 并根据公司ID查询公司名称
         SELECT company.co_name
         INTO TradeOrderFrame3.co_name
         FROM company
@@ -204,7 +218,7 @@ BEGIN
                 -- Estimates will be based on closing most recently acquired
                 -- holdings
                 -- Could return 0, 1 or many rows
-                OPEN hold_list FOR
+                OPEN hold_list FOR -- 打开游标
                     SELECT h_qty
                          , h_price
                     FROM holding
@@ -214,7 +228,7 @@ BEGIN
             ELSE
                 -- Estimates will be based on closing oldest holdings
                 -- Could return 0, 1 or many rows
-                OPEN hold_list FOR
+                OPEN hold_list FOR -- 打开游标
                     SELECT h_qty
                          , h_price
                     FROM holding
@@ -232,13 +246,13 @@ BEGIN
                 INTO hold_qty
                    , hold_price;
                 EXIT WHEN NOT FOUND;
-                IF hold_qty > needed_qty THEN
+                IF hold_qty > needed_qty THEN -- 当前持仓数量大于需要卖出的数量
                     -- Only a portion of this holding would be sold as a result
                     -- of the trade.
                     buy_value = buy_value + (needed_qty * hold_price);
                     sell_value = sell_value + (needed_qty * requested_price);
                     needed_qty = 0;
-                ELSE
+                ELSE -- 当前持仓数量小于等于需要卖出的数量
                     -- All of this holding would be sold as a result of this
                     -- trade.
                     buy_value = buy_value + (hold_qty * hold_price);
@@ -259,6 +273,7 @@ BEGIN
         -- opening a long postion in this security.
         IF hs_qty < 0 THEN
             -- Existing short position to buy
+            -- 根据是否为后进先出, 选择最近或最早的持仓
             IF is_lifo = 1 THEN
                 -- Estimates will be based on closing most recently acquired
                 -- holdings
@@ -323,6 +338,7 @@ BEGIN
         -- Therefore, get the sum of the tax rates that apply to the customer
         -- and estimate the overall amount of tax that would result from this
         -- order.
+        -- 查询适用于客户的税率总和
         SELECT sum(tx_rate)
         INTO tax_rates
         FROM taxrate
@@ -334,6 +350,7 @@ BEGIN
         tax_amount = (sell_value - buy_value) * tax_rates;
     END IF;
     -- Get administrative fees (e.g. trading charge, commission rate)
+    -- 获取行政费用
     SELECT cr_rate
     INTO comm_rate
     FROM commission_rate
@@ -348,6 +365,7 @@ BEGIN
     WHERE ch_c_tier = cust_tier
       AND ch_tt_id = trade_type_id;
     -- Compute assets on margin trades
+    -- 计算保证金交易的资产
     acct_assets = 0.0;
     IF type_is_margin = 1 THEN
         SELECT ca_bal
@@ -361,7 +379,7 @@ BEGIN
            , last_trade
         WHERE hs_ca_id = acct_id
           AND lt_s_symb = hs_s_symb;
-        IF hold_assets IS NULL THEN
+        IF hold_assets IS NULL THEN -- 当前账户是否有持仓
             -- account currently has no holdings
             acct_assets = acct_bal;
         ELSE
@@ -370,9 +388,9 @@ BEGIN
     END IF;
     -- Set the status for this trade
     IF tmp_type_is_market THEN
-        status_id = st_submitted_id;
+        status_id = st_submitted_id; -- 已提交状态
     ELSE
-        status_id = st_pending_id;
+        status_id = st_pending_id; -- 待处理状态
     END IF;
 END;
 $$
@@ -380,22 +398,22 @@ LANGUAGE 'plpgsql';
 
 -- Clause 3.3.7.6
 
-CREATE OR REPLACE FUNCTION TradeOrderFrame4 (
-    IN acct_id IDENT_T
-  , IN broker_id IDENT_T
-  , IN charge_amount VALUE_T
-  , IN comm_amount VALUE_T
-  , IN exec_name CHAR(64)
-  , IN is_cash SMALLINT
-  , IN is_lifo SMALLINT
-  , IN requested_price S_PRICE_T
-  , IN status_id CHAR(4)
-  , IN symbol VARCHAR(15)
-  , IN trade_qty S_QTY_T
-  , IN trade_type_id CHAR(3)
-  , IN type_is_market SMALLINT
-  , OUT trade_id TRADE_T
-) RETURNS TRADE_T
+CREATE OR REPLACE FUNCTION TradeOrderFrame4 ( -- MARK: TradeOrderFrame4
+    IN acct_id IDENT_T           -- 输入: 账户ID
+  , IN broker_id IDENT_T         -- 输入: 经纪人ID
+  , IN charge_amount VALUE_T     -- 输入: 收费金额
+  , IN comm_amount VALUE_T       -- 输入: 佣金金额
+  , IN exec_name CHAR(64)        -- 输入: 执行者名
+  , IN is_cash SMALLINT          -- 输入: 是否现金交易
+  , IN is_lifo SMALLINT          -- 输入: 是否后进先出
+  , IN requested_price S_PRICE_T -- 输入: 请求价格
+  , IN status_id CHAR(4)         -- 输入: 状态ID
+  , IN symbol VARCHAR(15)        -- 输入: 证券符号
+  , IN trade_qty S_QTY_T         -- 输入: 交易数量
+  , IN trade_type_id CHAR(3)     -- 输入: 交易类型ID
+  , IN type_is_market SMALLINT   -- 输入: 是否市价单
+  , OUT trade_id TRADE_T         -- 输出: 交易ID
+) RETURNS TRADE_T                -- 返回: TRADE_T 类型
 AS $$
 DECLARE
     -- variables
@@ -435,7 +453,7 @@ BEGIN
       , t_lifo
     )
     VALUES (
-        nextval('seq_trade_id')
+        nextval('seq_trade_id') -- 生成下一个交易ID(类型为 sequence 的 seq_trade_id 序列)
       , now_dts
       , status_id
       , trade_type_id
@@ -448,14 +466,14 @@ BEGIN
       , NULL
       , charge_amount
       , comm_amount
-      , 0
+      , 0 -- 税额初始化为 0
       , tmp_is_lifo
     )
-    RETURNING t_id
+    RETURNING t_id -- 返回交易ID
     INTO trade_id;
     -- Record pending trade information in TRADE_REQUEST table if this trade
     -- is a limit trade
-    IF type_is_market = 0 THEN
+    IF type_is_market = 0 THEN -- 如果不是市价单, 则为限价单
         INSERT INTO trade_request (
             tr_t_id
           , tr_tt_id
@@ -477,7 +495,8 @@ BEGIN
     INSERT INTO trade_history (
         th_t_id
       , th_dts
-      , th_st_id)
+      , th_st_id
+    )
     VALUES (
         trade_id
       , now_dts

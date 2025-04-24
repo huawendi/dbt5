@@ -28,8 +28,11 @@ CTradeLookupDB::DoTradeLookupFrame1(
 			cout << m_pid << " -- trade_id[" << i << "]: " << pIn->trade_id[i]
 				 << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TLF1");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);
@@ -129,8 +132,11 @@ CTradeLookupDB::DoTradeLookupFrame2(
 			 << ":" << pIn->start_trade_dts.minute << ":"
 			 << pIn->start_trade_dts.second << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TLF2");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);
@@ -231,8 +237,11 @@ CTradeLookupDB::DoTradeLookupFrame3(
 			 << pIn->start_trade_dts.second << endl
 			 << m_pid << " -- symbol: " << pIn->symbol << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TLF3");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);
@@ -338,8 +347,11 @@ CTradeLookupDB::DoTradeLookupFrame4(
 			 << pIn->trade_dts.hour << ":" << pIn->trade_dts.minute << ":"
 			 << pIn->trade_dts.second << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TLF4");
+#else
 	startTransaction();
+#endif
 	// Isolation level required by Clause 7.4.1.3
 	setReadCommitted();
 	execute(pIn, pOut);

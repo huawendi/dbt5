@@ -8,6 +8,10 @@
  * 25 July 2006
  */
 
+#include <spdlog/spdlog.h>
+#include <spdlog/async.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+
 #include "BrokerageHouse.h"
 #include "DBT5Consts.h"
 
@@ -147,6 +151,26 @@ main(int argc, char *argv[])
 	cout << "Using the following Market Exchange Emulator settings:" << endl
 		 << "  Hostname: " << szMEEHost << endl
 		 << "  Port: " << szMEEPort << endl;
+	
+	// 初始化异步线程池
+	spdlog::init_thread_pool(8192, 1);
+
+	// 定义日志文件的目标目录和文件名
+	string capture_dir = "/data/hwd/pg14.17/tpce-log/";
+	string file_name = "capture.log";
+	string full_capture_path = capture_dir + file_name;
+
+	try {
+		auto logger = spdlog::rotating_logger_mt("file_logger", full_capture_path, 
+				1048576 * 10, 64);
+		
+		logger->set_pattern("%v");
+		spdlog::set_default_logger(logger);
+
+	} catch (const spdlog::spdlog_ex &ex) {
+		cout << "Log initialization failed: " << ex.what() << endl;
+        return (1);
+	}
 
 	CBrokerageHouse BrokerageHouse(szHost, szDBName, szDBPort, szMEEHost,
 			szMEEPort, iListenPort, outputDirectory, iClientSide, verbose);
@@ -172,6 +196,8 @@ main(int argc, char *argv[])
 	}
 
 	pthread_exit(NULL);
+
+	spdlog::shutdown();
 
 	cout << "Brokerage House closed for business" << endl;
 	return (0);

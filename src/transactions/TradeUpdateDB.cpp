@@ -29,8 +29,11 @@ CTradeUpdateDB::DoTradeUpdateFrame1(
 			cout << m_pid << " -- trade_id[" << i << "]: " << pIn->trade_id[i]
 				 << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TUF1");
+#else
 	startTransaction();
+#endif
 	setRepeatableRead();
 	execute(pIn, pOut);
 	commitTransaction();
@@ -131,8 +134,11 @@ CTradeUpdateDB::DoTradeUpdateFrame2(
 			 << ":" << pIn->start_trade_dts.minute << ":"
 			 << pIn->start_trade_dts.second << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TUF2");
+#else
 	startTransaction();
+#endif
 	setRepeatableRead();
 	execute(pIn, pOut);
 	commitTransaction();
@@ -234,8 +240,11 @@ CTradeUpdateDB::DoTradeUpdateFrame3(
 			 << pIn->start_trade_dts.second << endl
 			 << m_pid << " -- symbol: " << pIn->symbol << endl;
 	}
-
+#if TEMPLATE
+	startTransaction("TUF3");
+#else
 	startTransaction();
+#endif
 	setRepeatableRead();
 	execute(pIn, pOut);
 	commitTransaction();

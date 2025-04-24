@@ -84,8 +84,11 @@ protected:
 	void setReadUncommitted();
 	void setRepeatableRead();
 	void setSerializable();
-
+#if TEMPLATE
+	void startTransaction(const char *macroName);
+#else
 	void startTransaction();
+#endif
 
 public:
 	CTxnBaseDB(CDBConnection *pDB, bool bVerbose = false);

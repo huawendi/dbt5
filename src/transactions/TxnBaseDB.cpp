@@ -222,12 +222,21 @@ CTxnBaseDB::rollbackTransaction()
 }
 
 void
+#if TEMPLATE
+CTxnBaseDB::startTransaction(const char *macroName)
+{
+	if (m_bVerbose) {
+		cout << "BEGIN" << endl;
+	}
+	pDB->begin(macroName);
+#else
 CTxnBaseDB::startTransaction()
 {
 	if (m_bVerbose) {
 		cout << "BEGIN" << endl;
 	}
 	pDB->begin();
+#endif
 }
 
 void

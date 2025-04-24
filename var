@@ -1,0 +1,1 @@
+export PATH=/home/hwd/dbt5/builds/debug:$PATH
