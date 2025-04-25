@@ -30,6 +30,7 @@
     # (修改 SHAREDIR="/home/hwd/dbt5/storedproc/pgsql/pgsql")
 
 # 第 3 布 （可选）：备份数据库状态
+    echo "backup dbt5 database ..."
     pg_dump -d dbt5 -f /data/hwd/pg14.17/backup/dbt5_$(date +%Y%m%d_%H%M%S).backup
 
 # 第 4 步（可选）: 删除捕获到的日志文件

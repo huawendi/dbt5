@@ -150,7 +150,7 @@ fi
 
 (cd "${EGENDIR}/prj" && \
 		make -f Makefile clean && \
-		CCFLAGS="-Wall -D__unix -g -std=c++11 -D__STDC_FORMAT_MACROS -D__STDC_CONSTANT_MACROS -D_LARGEFILE64_SOURCE -DCOMPILE_CUSTOM_LOAD -DPGSQL -I${EGENDIR}/inc ${INCLUDEDIR} -I${EGENDIR}/Utilities/inc -I/home/hwd/spdlog/include ${EXTRAINCLUDE}" \
+		CCFLAGS="-Wall -D__unix -g -std=c++11 -D__STDC_FORMAT_MACROS -D__STDC_CONSTANT_MACROS -D_LARGEFILE64_SOURCE -DCOMPILE_CUSTOM_LOAD -DPGSQL -I${EGENDIR}/inc ${INCLUDEDIR} -I${EGENDIR}/Utilities/inc -I/home/hwd/dbt5/spdlog/include ${EXTRAINCLUDE}" \
 		LDFLAGS="${EXTRALDDIR}" \
 		LIBS="-lpthread -lpq" \
 		make -j$(nproc) -f Makefile) \
