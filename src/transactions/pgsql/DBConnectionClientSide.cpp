@@ -4136,9 +4136,10 @@ CDBConnectionClientSide::execute(const TTradeResultFrame5Input *pIn)
 	
 	ss.str("");
 	ss.clear();
+
 	ss << pIn->trade_dts.year << "-" << pIn->trade_dts.month
 			 << "-" << pIn->trade_dts.day << " " << pIn->trade_dts.hour << ":"
-			 << pIn->trade_dts.minute << ":" << pIn->trade_dts.second << endl;
+			 << pIn->trade_dts.minute << ":" << pIn->trade_dts.second;
 	replace_map[1] = ss.str();
 
 	const char *paramValues2[3] = { (char *) &trade_id, (char *) &trade_dts,
@@ -4318,6 +4319,17 @@ CDBConnectionClientSide::execute(
 	const int paramLengths3[4] = { sizeof(uint64_t), sizeof(uint64_t),
 		sizeof(uint64_t), sizeof(char) * (cCT_NAME_len + 1) };
 	const int paramFormats3[4] = { 1, 1, 0, 0 };
+
+	ss.str("");
+	ss.clear();
+
+	ss << pIn->trade_dts.year << "-" 
+	   << pIn->trade_dts.month << "-" 
+	   << pIn->trade_dts.day << " " 
+	   << pIn->trade_dts.hour << ":"
+	   << pIn->trade_dts.minute << ":" 
+	   << pIn->trade_dts.second;
+	replace_map[0] = ss.str();
 
 	res = exec(TRF6Q3, 4, NULL, paramValues3, paramLengths3, paramFormats3, 0);
 	PQclear(res);
